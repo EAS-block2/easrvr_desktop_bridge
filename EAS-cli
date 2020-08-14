@@ -1,0 +1,79 @@
+#!/usr/bin/python3
+import yaml
+import os
+import time
+from shutil import copyfile
+os.system("clear")
+print("----EAS CLI Tool----")
+def startup_asker():
+    print("What would you like to do?")
+    print("1) Edit PC authorizations")
+    print("2) Backup/Restore configs")
+    print("3) Edit Config Manually")
+    return input("Choose an option: ")
+
+def autoedit():
+    try: 
+        file = open("/etc/EAS/rktconfig.yaml", "r")
+        yamf = yaml.load(file, Loader=yaml.FullLoader)
+    except: 
+        print("The file is missing or damaged, please try to restore a backup. Exit.")
+        quit()
+    tmp = str(input("Enter the username that you want to edit (AD format): "))
+    try: yamf["pc_auths"][tmp]
+    except(KeyError): 
+        print("That user dose not exist. Adding...")
+    gacc = input("should this user be able to access the general alarm? (y/n) ").lower()
+    sacc = input("should this user be able to access the silent alarm? (y/n) ").lower()
+    userlist = []
+    if gacc == 'y': userlist.append("general")
+    if sacc == 'y': userlist.append("silent")
+    yamf["pc_auths"][tmp] = userlist
+    with open("/etc/EAS/rktconfig.yaml", 'w') as file:
+        yaml.dump(yamf, file)
+    print ("Success!")
+    if input("Modify another user? (y/n) ").lower() == "y": autoedit()
+    else: 
+        print("Exiting. \n")
+        quit()
+
+def restore_backup():
+    print("\n Avilable Backups")
+    print("----------------")
+    for i in os.listdir("/etc/EAS/rkbackups"): print("* {}".format(i))
+    try: copyfile("/etc/EAS/rkbackups/{}.yaml".format(input("Enter file name (no extension): ")), "/etc/EAS/rktconfig.yaml")
+    except(FileNotFoundError):
+        print("Please enter the name of a file up above")
+        restore_backup()
+    print("Done")
+
+try: choice = int(startup_asker())
+except(ValueError): print("Bad Input.")
+print("")
+if choice == 1:
+    autoedit()
+if choice == 2:
+    print("There are currently {} backups.".format(len(os.listdir("/etc/EAS/rkbackups"))))
+    print("What would you like to do?")
+    print("1) Make a backup")
+    print("2) Restore a backup")
+    print("3) exit\n")
+    try: tmp = int(input("Choose an option: "))
+    except(ValueError): quit()
+    if tmp == 1:
+        copyfile("/etc/EAS/rktconfig.yaml", "/etc/EAS/rkbackups/{}.yaml".format(input("Enter file name (no extension): ")))
+        print("done")
+    if tmp == 2:
+        if len(os.listdir("/etc/EAS/rkbackups")) != 0:
+            restore_backup()
+        else: 
+            print("no backups exist. Quitting.")
+    quit()
+if choice == 3:
+    print("This is an unsafe operation and can break things.")
+    if input('Please type "I understand" to continue: ') != "I understand": quit()
+    print("whatever floats your boat")
+    time.sleep(0.25)
+    os.system("clear")
+    os.system("nano /etc/EAS/rktconfig.yaml")
+    print("edit complete, exiting. \n")

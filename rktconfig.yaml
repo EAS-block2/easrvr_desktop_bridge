@@ -1,0 +1,16 @@
+alm_info:
+  both:
+    addr: http://EASrvr/bactive
+  general:
+    addr: http://EASrvr/gactive
+    file: /etc/EAS/gL.yaml
+  silent:
+    addr: http://EASrvr/sactive
+    file: /etc/EAS/sL.yaml
+pc_auths:
+  cfuller: []
+  istrever:
+  - general
+  jellington:
+  - general
+  - silent
