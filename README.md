@@ -1,0 +1,1 @@
+you get the drill, service file goes in `/etc/systemd/system`, compiled binary goes in `/etc/EAS`, EAS-cli goes in `/usr/bin`

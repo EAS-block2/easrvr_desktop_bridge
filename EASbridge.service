@@ -1,0 +1,13 @@
+[Unit]
+Description=Emergency Alert System desktop bridge
+After=network.target
+StartLimitIntervalSec=500
+StartLimitBurst=5
+
+[Service]
+Restart=on-failure
+RestartSec=5s
+ExecStart=/etc/EAS/easrvr_desktop_bridge
+
+[Install]
+WantedBy=multi-user.target
