@@ -9,12 +9,13 @@ if os.geteuid() != 0:
     exit("You need to have root privileges to run this script.\nPlease try again, this time using 'sudo'. Exiting.")
 def startup_asker():
     print("What would you like to do?")
-    print("1) Edit PC authorizations")
+    print("1) Edit user authorizations")
     print("2) Backup/Restore configs")
     print("3) Edit Config Manually")
     return input("Choose an option: ")
 
 def autoedit():
+    authorizations = 0
     try: 
         file = open("/etc/EAS/rktconfig.yaml", "r")
         yamf = yaml.load(file, Loader=yaml.FullLoader)
@@ -28,15 +29,27 @@ def autoedit():
     gacc = input("should this user be able to access the general alarm? (y/n) ").lower()
     sacc = input("should this user be able to access the silent alarm? (y/n) ").lower()
     userlist = []
-    if gacc == 'y': userlist.append("general")
-    if sacc == 'y': userlist.append("silent")
-    yamf["pc_auths"][tmp] = userlist
+    if gacc == 'y':
+        userlist.append("general")
+        authorizations += 1
+    if sacc == 'y':
+        userlist.append("silent")
+        authorizations += 1
+    if authorizations == 0:
+        print("You've revoked all alarm permissions from this user.")
+        if input("Remove this user? (Y/n)").lower() == "y":
+            del yamf["pc_auths"][tmp]
+            print("user removed. \n")
+        else:
+            yamf["pc_auths"][tmp] = userlist
+    else:
+        yamf["pc_auths"][tmp] = userlist
     with open("/etc/EAS/rktconfig.yaml", 'w') as file:
         yaml.dump(yamf, file)
     print ("Success!")
-    if input("Modify another user? (y/n) ").lower() == "y": autoedit()
+    if input("Modify another user? (y/N) ").lower() == "y": autoedit()
     else: 
-        print("Exiting. \n")
+        print("Goodbye. \n")
         quit()
 
 def restore_backup():
@@ -73,7 +86,7 @@ if choice == 2:
     quit()
 if choice == 3:
     print("This is an unsafe operation and can break things.")
-    if input('Please type "I understand" to continue: ') != "I understand": quit()
+    if input('Do you accept the risk? (y/N)') != "y": quit()
     print("whatever floats your boat")
     time.sleep(0.25)
     os.system("clear")
