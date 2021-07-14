@@ -5,6 +5,8 @@ import time
 from shutil import copyfile
 os.system("clear")
 print("----EAS CLI Tool----")
+if os.geteuid() != 0:
+    exit("You need to have root privileges to run this script.\nPlease try again, this time using 'sudo'. Exiting.")
 def startup_asker():
     print("What would you like to do?")
     print("1) Edit PC authorizations")
