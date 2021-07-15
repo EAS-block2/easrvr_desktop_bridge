@@ -1,17 +1,20 @@
 #!/usr/bin/python3
 import yaml
 import os
+import sys
 import time
 from shutil import copyfile
 os.system("clear")
-print("----EAS CLI Tool----")
+print("===============EAS CLI Tool===============")
+print("------------------------------------------")
 if os.geteuid() != 0:
     exit("You need to have root privileges to run this script.\nPlease try again, this time using 'sudo'. Exiting.")
 def startup_asker():
     print("What would you like to do?")
-    print("1) Edit user authorizations")
-    print("2) Backup/Restore configs")
-    print("3) Edit Config Manually")
+    print("1) Edit desktop user authorizations")
+    print("2) Manage Webadmin users")
+    print("3) Backup/Restore configs")
+    print("4) Edit Config Manually")
     return input("Choose an option: ")
 
 def autoedit():
@@ -26,8 +29,14 @@ def autoedit():
     try: yamf["pc_auths"][tmp]
     except(KeyError): 
         print("That user dose not exist. Adding...")
-    gacc = input("should this user be able to access the general alarm? (y/n) ").lower()
-    sacc = input("should this user be able to access the silent alarm? (y/n) ").lower()
+        if input("Add user to webserver access list? (Y/n) ").lower() !="n":
+            print("Launching htaccess utility, you will be prompted to enter the user's new password...\n")
+            if os.system("htpasswd /etc/EAS/httpdpasswd {0}".format(tmp)) !=0:
+                print("Looks like that failed, please consult online help for the htpasswd utility")
+                print("Aborting Webserver user add. \n")
+            else: print("Success! Moving to {0}'s authorizations... \n".format(tmp))
+    gacc = input("should this user be able to access the general alarm? (y/N) ").lower()
+    sacc = input("should this user be able to access the silent alarm? (y/N) ").lower()
     userlist = []
     if gacc == 'y':
         userlist.append("general")
@@ -36,12 +45,14 @@ def autoedit():
         userlist.append("silent")
         authorizations += 1
     if authorizations == 0:
-        print("You've revoked all alarm permissions from this user.")
-        if input("Remove this user? (Y/n)").lower() == "y":
+        print("You've revoked all alarm permissions from {0}.".format(tmp))
+        if input("Remove {0}'s desktop endpoint authorization? (y/N) ".format(tmp)).lower() == "y":
             del yamf["pc_auths"][tmp]
             print("user removed. \n")
         else:
             yamf["pc_auths"][tmp] = userlist
+        if input("Remove {0}'s webadmin authorization? (y/N) ".format(tmp)).lower() == "y":
+            os.system("htpasswd -D /etc/EAS/httpdpasswd {0}".format(tmp))
     else:
         yamf["pc_auths"][tmp] = userlist
     with open("/etc/EAS/rktconfig.yaml", 'w') as file:
@@ -62,33 +73,53 @@ def restore_backup():
         restore_backup()
     print("Done")
 
-try: choice = int(startup_asker())
-except(ValueError): print("Bad Input.")
-print("")
-if choice == 1:
-    autoedit()
-if choice == 2:
-    print("There are currently {} backups.".format(len(os.listdir("/etc/EAS/rkbackups"))))
-    print("What would you like to do?")
-    print("1) Make a backup")
-    print("2) Restore a backup")
-    print("3) exit\n")
-    try: tmp = int(input("Choose an option: "))
-    except(ValueError): quit()
-    if tmp == 1:
-        copyfile("/etc/EAS/rktconfig.yaml", "/etc/EAS/rkbackups/{}.yaml".format(input("Enter file name (no extension): ")))
-        print("done")
-    if tmp == 2:
-        if len(os.listdir("/etc/EAS/rkbackups")) != 0:
-            restore_backup()
-        else: 
-            print("no backups exist. Quitting.")
-    quit()
-if choice == 3:
-    print("This is an unsafe operation and can break things.")
-    if input('Do you accept the risk? (y/N)') != "y": quit()
-    print("whatever floats your boat")
-    time.sleep(0.25)
+def web_passwd_change():
+    opt1 = ""
     os.system("clear")
-    os.system("nano /etc/EAS/rktconfig.yaml")
-    print("edit complete, exiting. \n")
+    print("==EAS Webadmin Password Management==")
+    print("What would you like to do?")
+    print("1) Change a user's password")
+    print("2) Verify a user's password")
+    print("3) Revoke a user's access")
+    passwordchoice = input("Choose an option: ")
+    if passwordchoice == "2": opt1 = "-v "
+    if passwordchoice == "3": opt1 = "-D "
+    opt2 = input("\ninput the username you want to manage: ").lower()
+    os.system("htpasswd {0}/etc/EAS/httpdpasswd {1}".format(opt1,opt2))
+try:
+    try: choice = int(startup_asker())
+    except(ValueError):
+        print("Bad Input.")
+        startup_asker()
+    if choice == 1:
+        autoedit()
+    if choice == 2:
+        web_passwd_change()
+    if choice == 3:
+        print("There are currently {} backups.".format(len(os.listdir("/etc/EAS/rkbackups"))))
+        print("What would you like to do?")
+        print("1) Make a backup")
+        print("2) Restore a backup")
+        print("3) exit\n")
+        try: tmp = int(input("Choose an option: "))
+        except(ValueError): quit()
+        if tmp == 1:
+            copyfile("/etc/EAS/rktconfig.yaml", "/etc/EAS/rkbackups/{}.yaml".format(input("Enter file name (no extension): ")))
+            print("done")
+        if tmp == 2:
+            if len(os.listdir("/etc/EAS/rkbackups")) != 0:
+                restore_backup()
+            else: 
+                print("no backups exist. Quitting.")
+        quit()
+    if choice == 4:
+        print("This is an unsafe operation and can break things.")
+        if input('Do you accept the risk? (y/N) ') != "y": quit()
+        print("whatever floats your boat")
+        time.sleep(0.25)
+        os.system("clear")
+        os.system("nano /etc/EAS/rktconfig.yaml")
+        print("edit complete, exiting. \n")
+except KeyboardInterrupt:
+    print("\n--Goodbye!--\n")
+    sys.exit(0)
