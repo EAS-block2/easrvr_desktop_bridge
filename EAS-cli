@@ -11,10 +11,11 @@ if os.geteuid() != 0:
     exit("You need to have root privileges to run this script.\nPlease try again, this time using 'sudo'. Exiting.")
 def startup_asker():
     print("What would you like to do?")
-    print("1) Edit desktop user authorizations")
+    print("1) Manage Desktop Users")
     print("2) Manage Webadmin users")
     print("3) Backup/Restore configs")
     print("4) Edit Config Manually")
+    print("Hint: you can exit at any time with ctrl+c")
     return input("Choose an option: ")
 
 def autoedit():
@@ -25,12 +26,23 @@ def autoedit():
     except: 
         print("The file is missing or damaged, please try to restore a backup. Exit.")
         quit()
+    print("\n \n ===Desktop User Options===")
+    print("1) List Current Users")
+    print("2) Add, Remove, or Edit A User")
+    if input("Choose an Option (2): ") == "1":
+        print("\n Current Users:")
+        print("-------------")
+        for i in yamf["pc_auths"]:
+            print(i)
+        print("------------- \n")
+        return
     tmp = str(input("Enter the username that you want to edit (AD format): "))
     try: yamf["pc_auths"][tmp]
     except(KeyError): 
         print("That user dose not exist. Adding...")
         if input("Add user to webserver access list? (Y/n) ").lower() !="n":
             print("Launching htaccess utility, you will be prompted to enter the user's new password...\n")
+            time.sleep(0.5)
             if os.system("htpasswd /etc/EAS/httpdpasswd {0}".format(tmp)) !=0:
                 print("Looks like that failed, please consult online help for the htpasswd utility")
                 print("Aborting Webserver user add. \n")
@@ -75,51 +87,64 @@ def restore_backup():
 
 def web_passwd_change():
     opt1 = ""
-    os.system("clear")
     print("==EAS Webadmin Password Management==")
     print("What would you like to do?")
-    print("1) Change a user's password")
-    print("2) Verify a user's password")
-    print("3) Revoke a user's access")
+    print("1) Add a user")
+    print("2) Change a user's password")
+    print("3) Verify a user's password")
+    print("4) Revoke a user's access")
+    print("5) Print list of users")
     passwordchoice = input("Choose an option: ")
-    if passwordchoice == "2": opt1 = "-v "
-    if passwordchoice == "3": opt1 = "-D "
-    opt2 = input("\ninput the username you want to manage: ").lower()
-    os.system("htpasswd {0}/etc/EAS/httpdpasswd {1}".format(opt1,opt2))
-try:
-    try: choice = int(startup_asker())
-    except(ValueError):
-        print("Bad Input.")
-        startup_asker()
-    if choice == 1:
-        autoedit()
-    if choice == 2:
+    if passwordchoice == "5":
+        usrlst = open("/etc/EAS/httpdpasswd","r")
+        for line in usrlst:
+            print(line.split(":")[0])
+        print("\n")
         web_passwd_change()
-    if choice == 3:
-        print("There are currently {} backups.".format(len(os.listdir("/etc/EAS/rkbackups"))))
-        print("What would you like to do?")
-        print("1) Make a backup")
-        print("2) Restore a backup")
-        print("3) exit\n")
-        try: tmp = int(input("Choose an option: "))
-        except(ValueError): quit()
-        if tmp == 1:
-            copyfile("/etc/EAS/rktconfig.yaml", "/etc/EAS/rkbackups/{}.yaml".format(input("Enter file name (no extension): ")))
-            print("done")
-        if tmp == 2:
-            if len(os.listdir("/etc/EAS/rkbackups")) != 0:
-                restore_backup()
-            else: 
-                print("no backups exist. Quitting.")
-        quit()
-    if choice == 4:
-        print("This is an unsafe operation and can break things.")
-        if input('Do you accept the risk? (y/N) ') != "y": quit()
-        print("whatever floats your boat")
-        time.sleep(0.25)
-        os.system("clear")
-        os.system("nano /etc/EAS/rktconfig.yaml")
-        print("edit complete, exiting. \n")
-except KeyboardInterrupt:
-    print("\n--Goodbye!--\n")
-    sys.exit(0)
+    else:
+        if passwordchoice == "3": opt1 = "-v "
+        if passwordchoice == "4": opt1 = "-D "
+        opt2 = input("\ninput the username you want to manage: ").lower()
+        os.system("htpasswd {0}/etc/EAS/httpdpasswd {1}".format(opt1,opt2))
+        main()
+def main():
+    try:
+        try: choice = int(startup_asker())
+        except(ValueError):
+            print("Bad Input.")
+            startup_asker()
+        if choice == 1:
+            autoedit()
+        if choice == 2:
+            os.system("clear")
+            web_passwd_change()
+        if choice == 3:
+            print("There are currently {} backups.".format(len(os.listdir("/etc/EAS/rkbackups"))))
+            print("What would you like to do?")
+            print("1) Make a backup")
+            print("2) Restore a backup")
+            print("3) exit\n")
+            try: tmp = int(input("Choose an option: "))
+            except(ValueError): quit()
+            if tmp == 1:
+                copyfile("/etc/EAS/rktconfig.yaml", "/etc/EAS/rkbackups/{}.yaml".format(input("Enter file name (no extension): ")))
+                print("done")
+            if tmp == 2:
+                if len(os.listdir("/etc/EAS/rkbackups")) != 0:
+                    restore_backup()
+                else: 
+                    print("no backups exist. Quitting.")
+            quit()
+        if choice == 4:
+            print("This is an unsafe operation and can break things.")
+            if input('Do you accept the risk? (y/N) ') != "y": quit()
+            print("whatever floats your boat")
+            time.sleep(0.25)
+            os.system("clear")
+            os.system("nano /etc/EAS/rktconfig.yaml")
+            print("edit complete, exiting. \n")
+    except KeyboardInterrupt:
+        print("\n--Goodbye!--\n")
+        sys.exit(0)
+main()
+main()
